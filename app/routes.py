@@ -4,7 +4,9 @@ from werkzeug.security import generate_password_hash, check_password_hash
 from flask_jwt_extended import (
     create_access_token,
     jwt_required,
+    get_jwt_identity
 )
+
 
 
 bp = Blueprint("routes", __name__)
@@ -150,6 +152,33 @@ def like_post(post_id):
         message = "Post liked"
     db.session.commit()
     return jsonify({"message": message}), 200
+
+
+@bp.route("/me", methods=["GET"])
+@jwt_required()
+def get_current_user():
+
+    current_user = get_jwt_identity()
+
+
+    user = User.query.get(current_user["id"])
+
+    if not user:
+        return jsonify({"error": "User not found"}), 404
+
+    # Devuelve los datos del usuario en formato JSON
+    return (
+        jsonify(
+            {
+                "id": user.id,
+                "username": user.username,
+                "name": user.name,
+                "surname": user.surname,
+                "avatar": user.avatar,
+            }
+        ),
+        200,
+    )
 
 
 @bp.route("/posts/<int:post_id>", methods=["DELETE"])
