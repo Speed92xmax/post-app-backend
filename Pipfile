@@ -1,0 +1,23 @@
+[[source]]
+url = "https://pypi.org/simple"
+verify_ssl = true
+name = "pypi"
+
+[packages]
+flask = "*"
+flask-sqlalchemy = "*"
+flask-migrate = "*"
+psycopg2-binary = "*"
+sqlalchemy = "*"
+gunicorn = "*"
+
+[dev-packages]
+
+[scripts]
+dev = "flask --app src.app run --debug"
+init = "flask --app src.app db init"
+migrate = "flask --app src.app db migrate"
+upgrade = "flask --app src.app db upgrade"
+
+[requires]
+python_version = "3.10"
