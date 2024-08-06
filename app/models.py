@@ -11,6 +11,16 @@ class User(db.Model):
     surname = db.Column(db.String(20), nullable=False)
     posts = db.relationship("Post", backref="author", lazy=True)
 
+    def to_dict(self):
+        return {
+            "id": self.id,
+            "avatar": self.avatar,
+            "username": self.username,
+            "name": self.name,
+            "surname": self.surname,
+            "posts": [post.to_dict() for post in self.posts],
+        }
+
 
 class Post(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -26,6 +36,18 @@ class Post(db.Model):
     created_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
     location = db.Column(db.String(30), nullable=False)
     status = db.Column(db.String(10), nullable=False)
+
+    def to_dict(self):
+        return {
+            "id": self.id,
+            "image": self.image,
+            "message": self.message,
+            "likes": [like.username for like in self.likes],
+            "author_id": self.author_id,
+            "created_at": self.created_at.isoformat(),
+            "location": self.location,
+            "status": self.status,
+        }
 
 
 post_likes = db.Table(

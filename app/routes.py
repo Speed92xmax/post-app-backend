@@ -1,12 +1,7 @@
 from flask import Blueprint, request, jsonify
 from .models import db, User, Post
 from werkzeug.security import generate_password_hash, check_password_hash
-from flask_jwt_extended import (
-    create_access_token,
-    jwt_required,
-    get_jwt_identity
-)
-
+from flask_jwt_extended import create_access_token, jwt_required, get_jwt_identity
 
 
 bp = Blueprint("routes", __name__)
@@ -45,10 +40,10 @@ def register():
 
     try:
         db.session.commit()
-        return jsonify({"data": "user created"}), 201
+        return jsonify({"ok": True, "data": "user created"}), 201
     except Exception as error:
         db.session.rollback()
-        print(f"Error: {error}")  # Imprime el error en los logs
+        print(f"Error: {error}")
         return (
             jsonify({"ok": False, "error": "Internal server error", "status": 500}),
             500,
@@ -70,54 +65,35 @@ def login():
 
     user = User.query.filter_by(username=username).one_or_none()
     if user is None:
-        return jsonify({"error": "username does not exist"}), 404
+        return jsonify({"ok": False, "error": "username does not exist"}), 404
     pass_match = check_password_hash(user.password, password)
     if not pass_match:
-        return jsonify({"error": "invalid password"}), 401
+        return jsonify({"ok": False, "error": "invalid password"}), 401
 
     auth_token = create_access_token({"username": user.username, "id": user.id})
-    return jsonify({"auth_token": auth_token}), 200
+    return jsonify({"ok": True, "auth_token": auth_token}), 200
 
 
 @bp.route("/posts", methods=["GET"])
 @jwt_required()
 def get_posts():
 
-    # Obtén el user_id de los parámetros de consulta
     user_id = request.args.get("user_id")
 
     if user_id is None:
         return jsonify({"error": "user_id is required"}), 400
 
-    # Obtén el usuario basado en el user_id
     user = User.query.get(user_id)
 
     if not user:
         return jsonify({"error": "User not found"}), 404
 
-    # Filtra las publicaciones del usuario
-    posts = Post.query.filter_by(author=user).order_by(Post.created_at.desc()).all()
+    posts = (
+        Post.query.filter_by(author_id=user.id).order_by(Post.created_at.desc()).all()
+    )
 
     return (
-        jsonify(
-            [
-                {
-                    "id": post.id,
-                    "image": post.image,
-                    "message": post.message,
-                    "likes": [like.username for like in post.likes],
-                    "author": {
-                        "username": post.author.username,
-                        "name": post.author.name,
-                        "surname": post.author.surname,
-                    },
-                    "created_at": post.created_at,
-                    "location": post.location,
-                    "status": post.status,
-                }
-                for post in posts
-            ]
-        ),
+        jsonify([post.to_dict() for post in posts]),
         200,
     )
 
@@ -136,7 +112,7 @@ def create_post():
     )
     db.session.add(new_post)
     db.session.commit()
-    return jsonify({"message": "Post created successfully"}), 201
+    return (jsonify(new_post.to_dict()), 201, {"ok": True})
 
 
 @bp.route("/like/<int:post_id>", methods=["POST"])
@@ -154,27 +130,20 @@ def like_post(post_id):
     return jsonify({"message": message}), 200
 
 
-@bp.route("/me", methods=["GET"])
+@bp.route("/user", methods=["GET"])
 @jwt_required()
 def get_current_user():
-
     current_user = get_jwt_identity()
-
-
     user = User.query.get(current_user["id"])
 
     if not user:
         return jsonify({"error": "User not found"}), 404
 
-    # Devuelve los datos del usuario en formato JSON
     return (
         jsonify(
             {
-                "id": user.id,
-                "username": user.username,
-                "name": user.name,
-                "surname": user.surname,
-                "avatar": user.avatar,
+                "user": user.to_dict(),
+                "ok": True,
             }
         ),
         200,
